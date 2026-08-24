@@ -43,6 +43,9 @@
            SELECT REPORTE ASSIGN TO "REPORTE-EMPRESAS.TXT"
            ORGANIZATION IS LINE SEQUENTIAL.
 
+           SELECT LOG-ERRORES ASSIGN TO "LOG.txt"
+           ORGANIZATION IS LINE SEQUENTIAL.
+
        DATA DIVISION.
        FILE SECTION.
        FD EMPLEADOS.
@@ -107,6 +110,10 @@
            05 FILLER PIC X VALUE SPACE.
            05 REP-SALARIO PIC ZZ,ZZZ,ZZ9.99.
 
+       FD LOG-ERRORES.
+       01 REG-LOG.
+           05 LOG-MENSAJE PIC X(80).
+
        WORKING-STORAGE SECTION.
        01 WS-CONTROL.
            05 FIN-EMPLEADOS PIC X VALUE "N".
@@ -161,7 +168,8 @@
 
            OPEN INPUT EMP-ORDS
                       EMPRES-ORDS
-               OUTPUT REPORTE.
+               OUTPUT REPORTE
+               LOG-ERRORES.
 
            PERFORM 130-CABECERA.
 
@@ -218,6 +226,7 @@
                 ELSE
 
                     IF WS-LLAVE-EMPLEADO < WS-LLAVE-EMPRESA
+                        PERFORM 330-ESCRIBIR-LOG
                         PERFORM 110-LEER-EMPLEADOS
 
                     ELSE
@@ -261,12 +270,21 @@
 
            WRITE REG-REPORTE.
 
+       330-ESCRIBIR-LOG.
+           INITIALIZE REG-LOG
+           STRING "ERROR: EL EMPLEADO CON RFC " ORD-RFC-EMPLEADO
+                  " NO SE ENCONTRO EN LA EMPRESA " ORD-RFC-EMPRESA
+                  DELIMITED BY SIZE INTO LOG-MENSAJE
+           END-STRING
+           WRITE REG-LOG.
+
        400-FINALIZAR.
            PERFORM 410-ESTADISTICA.
 
            CLOSE EMP-ORDS
                  EMPRES-ORDS
-                 REPORTE.
+                 REPORTE
+                 LOG-ERRORES.
 
        410-ESTADISTICA.
            MOVE WS-EMPLEADOS-LEIDOS TO WS-MAS-EMPLEADOS-LEIDOS
