@@ -11,19 +11,10 @@
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
            SELECT EMPRESAS ASSIGN TO DISK
-           "C:\Users\keibarra\Documents\Tarea 8\Empresas\Empre_UM.txt"
-           ORGANIZATION IS LINE SEQUENTIAL
-           ACCESS MODE IS SEQUENTIAL.
-
-           SELECT EMPRES-TEMP ASSIGN TO DISK
-           "C:\Users\keibarra\Documents\Tarea 8\Empresas\Empre_Temp.txt"
-           ORGANIZATION IS LINE SEQUENTIAL
-           ACCESS MODE IS SEQUENTIAL.
-
-           SELECT EMPRES-ORDS ASSIGN TO DISK
-           "C:\Users\keibarra\Documents\Tarea 8\Empresas\Empre_Ords.txt"
-           ORGANIZATION IS LINE SEQUENTIAL
-           ACCESS MODE IS SEQUENTIAL.
+           "C:\Users\keibarra\Documents\Tarea 8\Empresas\Empre_IND.dat"
+           ORGANIZATION IS INDEXED
+           ACCESS MODE IS DYNAMIC
+           RECORD KEY IS EMPRESA-KEY.
 
            SELECT EMPLEADOS ASSIGN TO DISK
            "C:\Users\keibarra\Documents\Tarea 8\Empleados\Empl_UM.txt"
@@ -71,27 +62,12 @@
 
        FD EMPRESAS.
        01 REG-EMPRESA.
-           05 EMPR-RFC-EMPRESA PIC X(12).
-           05 EMPR-RFC-EMPLEADO PIC X(13).
+           05 EMPRESA-KEY.
+               10 EMPR-RFC-EMPRESA PIC X(12).
+               10 EMPR-RFC-EMPLEADO PIC X(13).
            05 NOMB-EMPRESA PIC X(20).
            05 FECHA-ALTA PIC X(09).
            05 SALARIO PIC 9(06)V99.
-
-       SD EMPRES-TEMP.
-       01 REG-EMPRESA-TEMP.
-           05 TMP-EMPR-RFC-EMPRESA PIC X(12).
-           05 TMP-EMPR-RFC-EMPLEADO PIC X(13).
-           05 TMP-NOMB-EMPRESA PIC X(20).
-           05 TMP-FECHA-ALTA PIC X(09).
-           05 TMP-SALARIO PIC 9(06)V99.
-
-       FD EMPRES-ORDS.
-       01 REG-EMPRESA-ORDS.
-           05 ORD-EMPR-RFC-EMPRESA PIC X(12).
-           05 ORD-EMPR-RFC-EMPLEADO PIC X(13).
-           05 ORD-NOMB-EMPRESA PIC X(20).
-           05 ORD-FECHA-ALTA PIC X(09).
-           05 ORD-SALARIO PIC 9(06)V99.
 
        FD REPORTE.
        01 REG-REPORTE.
@@ -110,13 +86,6 @@
        WORKING-STORAGE SECTION.
        01 WS-CONTROL.
            05 FIN-EMPLEADOS PIC X VALUE "N".
-           05 FIN-EMPRESAS PIC X VALUE "N".
-       01 WS-LLAVE-EMPLEADO.
-           05 WS-EMP-RFC-EMPRESA PIC X(12).
-           05 WS-EMP-RFC-EMPLEADO PIC X(13).
-       01 WS-LLAVE-EMPRESA.
-           05 WS-EMPR-RFC-EMPRESA PIC X(12).
-           05 WS-EMPR-RFC-EMPLEADO PIC X(13).
        01 WS-CONTADORES.
            05 WS-EMPLEADOS-LEIDOS PIC 9(05) VALUE ZERO.
            05 WS-EMPRESAS-LEIDAS PIC 9(05) VALUE ZERO.
@@ -153,20 +122,13 @@
                    TMP-RFC-EMPLEADO
            USING EMPLEADOS GIVING EMP-ORDS.
 
-           SORT EMPRES-TEMP
-               ON ASCENDING KEY
-                   TMP-EMPR-RFC-EMPRESA
-                   TMP-EMPR-RFC-EMPLEADO
-           USING EMPRESAS GIVING EMPRES-ORDS.
-
            OPEN INPUT EMP-ORDS
-                      EMPRES-ORDS
+                      EMPRESAS
                OUTPUT REPORTE.
 
            PERFORM 130-CABECERA.
 
            PERFORM 110-LEER-EMPLEADOS.
-           PERFORM 120-LEER-EMPRESAS.
 
        110-LEER-EMPLEADOS.
            READ EMP-ORDS
@@ -174,26 +136,6 @@
                    MOVE "S" TO FIN-EMPLEADOS
                NOT AT END
                    ADD 1 TO WS-EMPLEADOS-LEIDOS
-
-                   MOVE ORD-RFC-EMPRESA
-                   TO WS-EMP-RFC-EMPRESA
-
-                   MOVE ORD-RFC-EMPLEADO
-                   TO WS-EMP-RFC-EMPLEADO
-           END-READ.
-
-       120-LEER-EMPRESAS.
-           READ EMPRES-ORDS
-               AT END
-                   MOVE "S" TO FIN-EMPRESAS
-               NOT AT END
-                   ADD 1 TO WS-EMPRESAS-LEIDAS
-
-                   MOVE ORD-EMPR-RFC-EMPRESA
-                   TO WS-EMPR-RFC-EMPRESA
-
-                   MOVE ORD-EMPR-RFC-EMPLEADO
-                   TO WS-EMPR-RFC-EMPLEADO
            END-READ.
 
        130-CABECERA.
@@ -203,41 +145,39 @@
 
        200-PROCESAR-ARCHIVOS.
            PERFORM UNTIL FIN-EMPLEADOS = "S"
-                          OR FIN-EMPRESAS = "S"
 
-               IF WS-LLAVE-EMPLEADO = WS-LLAVE-EMPRESA
+               MOVE ORD-RFC-EMPRESA
+                   TO EMPR-RFC-EMPRESA
 
-                   ADD 1 TO WS-PROCESADOS
+               MOVE ORD-RFC-EMPLEADO
+                   TO EMPR-RFC-EMPLEADO
 
-                   PERFORM 300-DISPLAY
-                   PERFORM 320-ESCRIBIR-REPORTE
+               READ EMPRESAS
+                   KEY IS EMPRESA-KEY
+                   INVALID KEY
+                       CONTINUE
+                   NOT INVALID KEY
 
-                   PERFORM 110-LEER-EMPLEADOS
-                   PERFORM 120-LEER-EMPRESAS
+                        ADD 1 TO WS-EMPRESAS-LEIDAS
+                        ADD 1 TO WS-PROCESADOS
 
-                ELSE
+                        PERFORM 300-DISPLAY
+                        PERFORM 320-ESCRIBIR-REPORTE
+               END-READ
 
-                    IF WS-LLAVE-EMPLEADO < WS-LLAVE-EMPRESA
-                        PERFORM 110-LEER-EMPLEADOS
-
-                    ELSE
-                        PERFORM 120-LEER-EMPRESAS
-
-                    END-IF
-
-                END-IF
+               PERFORM 110-LEER-EMPLEADOS
 
            END-PERFORM.
 
        300-DISPLAY.
            PERFORM 310-FORMAR-NOMBRE.
            DISPLAY
-               ORD-NOMB-EMPRESA SPACE
-               ORD-EMPR-RFC-EMPRESA SPACE
+               NOMB-EMPRESA SPACE
+               EMPR-RFC-EMPRESA SPACE
                ORD-RFC-EMPLEADO SPACE
                WS-NOMBRE-COMPLETO SPACE
-               ORD-FECHA-ALTA SPACE
-               ORD-SALARIO.
+               FECHA-ALTA SPACE
+               SALARIO.
 
        310-FORMAR-NOMBRE.
            MOVE SPACES TO WS-NOMBRE-COMPLETO.
@@ -252,12 +192,12 @@
            END-STRING.
 
        320-ESCRIBIR-REPORTE.
-           MOVE ORD-NOMB-EMPRESA TO REP-EMPRESA
-           MOVE ORD-EMPR-RFC-EMPRESA TO REP-RFC-EMPRESA
+           MOVE NOMB-EMPRESA TO REP-EMPRESA
+           MOVE EMPR-RFC-EMPRESA TO REP-RFC-EMPRESA
            MOVE ORD-RFC-EMPLEADO TO REP-RFC-EMPLEADO
            MOVE WS-NOMBRE-COMPLETO TO REP-NOMBRE-COMPLETO
-           MOVE ORD-FECHA-ALTA TO REP-FECHA
-           MOVE ORD-SALARIO TO REP-SALARIO
+           MOVE FECHA-ALTA TO REP-FECHA
+           MOVE SALARIO TO REP-SALARIO
 
            WRITE REG-REPORTE.
 
@@ -265,7 +205,7 @@
            PERFORM 410-ESTADISTICA.
 
            CLOSE EMP-ORDS
-                 EMPRES-ORDS
+                 EMPRESAS
                  REPORTE.
 
        410-ESTADISTICA.
