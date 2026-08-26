@@ -253,7 +253,7 @@
                ORD-AMATERNO DELIMITED BY SPACE
                INTO WS-NOMBRE-COMPLETO
            END-STRING.
-
+      *Aqui aplique un cambio :)
         320-ESCRIBIR-REPORTE.
            MOVE NOMB-EMPRESA       TO REP-EMPRESA
            MOVE EMPR-RFC-EMPRESA   TO REP-RFC-EMPRESA
