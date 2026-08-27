@@ -34,6 +34,9 @@
            SELECT REPORTE ASSIGN TO "REPORTE-EMPRESAS.TXT"
            ORGANIZATION IS LINE SEQUENTIAL.
 
+           SELECT LOG-ERRORES ASSIGN TO "LOG.txt"
+           ORGANIZATION IS LINE SEQUENTIAL.
+
        DATA DIVISION.
        FILE SECTION.
        FD EMPLEADOS.
@@ -73,6 +76,10 @@
        01  REG-REPORTE-OUT        PIC X(115).
 
 
+       FD LOG-ERRORES.
+       01 REG-LOG.
+           05 LOG-MENSAJE PIC X(80).
+
        WORKING-STORAGE SECTION.
        01 WS-CONTROL.
            05 FIN-EMPLEADOS PIC X VALUE "N".
@@ -95,7 +102,7 @@
            05 WS-MAS-EMPLEADOS-LEIDOS PIC ZZ,ZZ9.
            05 WS-MAS-EMPRESAS-LEIDAS PIC ZZ,ZZ9.
            05 WS-MAS-PROCESADOS PIC ZZ,ZZ9.
-
+      *AQUI ENCONTRÉ EL ERROR, LO REMOVÍ Y YA QUEDÓ FUNCIONAL
        77 WS-NOMBRE-COMPLETO PIC X(40).
 
        01  WS-DETALLE-REPORTE.
@@ -126,6 +133,9 @@
            USING EMPLEADOS GIVING EMP-ORDS.
 
            OPEN INPUT EMP-ORDS
+                      EMPRES-ORDS
+               OUTPUT REPORTE
+               LOG-ERRORES.
                       EMPRESAS
                OUTPUT REPORTE.
 
@@ -155,6 +165,9 @@
                MOVE ORD-RFC-EMPLEADO
                    TO EMPR-RFC-EMPLEADO
 
+                    IF WS-LLAVE-EMPLEADO < WS-LLAVE-EMPRESA
+                        PERFORM 330-ESCRIBIR-LOG
+                        PERFORM 110-LEER-EMPLEADOS
                READ EMPRESAS
                    KEY IS EMPRESA-KEY
                    INVALID KEY
@@ -205,10 +218,21 @@
 
            WRITE REG-REPORTE-OUT FROM WS-DETALLE-REPORTE.
 
+       330-ESCRIBIR-LOG.
+           INITIALIZE REG-LOG
+           STRING "ERROR: EL EMPLEADO CON RFC " ORD-RFC-EMPLEADO
+                  " NO SE ENCONTRO EN LA EMPRESA " ORD-RFC-EMPRESA
+                  DELIMITED BY SIZE INTO LOG-MENSAJE
+           END-STRING
+           WRITE REG-LOG.
+
        400-FINALIZAR.
            PERFORM 410-ESTADISTICA.
 
            CLOSE EMP-ORDS
+                 EMPRES-ORDS
+                 REPORTE
+                 LOG-ERRORES.
                  EMPRESAS
                  REPORTE.
 
